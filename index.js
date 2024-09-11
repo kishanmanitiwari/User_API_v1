@@ -5,6 +5,7 @@ import path from "path";
 import fs from "fs";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
+import cors from "cors";
 
 dotenv.config();
 const app = express();
@@ -17,6 +18,11 @@ const validAPIKey = process.env.API_Key;
 //middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(
+  cors({
+    origin: "https://restusers.netlify.app",
+  })
+);
 
 function checkApiKey(req, res, next) {
   // const apiKey = req.query.appid; //Query Params
