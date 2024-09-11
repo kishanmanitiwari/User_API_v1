@@ -1,89 +1,126 @@
 import { UserModel } from "../models/userModel.js";
 
 export const UserController = {
-  // GET - Get all users with filtering and pagination
-  getUsers: (req, res) => {
+  getUsers: async (req, res) => {
     const { gender, job_title, page = 1, limit = 10 } = req.query;
-    let users = UserModel.getAllUsers();
 
-    const filteredUsers = users.filter(user => {
-      if (gender && job_title) {
-        return user.gender === gender && user.job_title === job_title;
-      } else if (gender) {
-        return user.gender === gender;
-      } else if (job_title) {
-        return user.job_title === job_title;
-      } else {
-        return true;
-      }
-    });
+    try {
+      // Get filtered users with pagination
+      const filteredUsers = await UserModel.filterUsers(
+        { gender, job_title },
+        page,
+        limit
+      );
 
-    const startIndex = (page - 1) * limit;
-    const paginatedUsers = filteredUsers.slice(startIndex, startIndex + limit);
+      // Calculate total results for the filter criteria
+      const allUsers = await UserModel.filterUsers(
+        { gender, job_title },
+        1,
+        1000000
+      ); // A large limit to get all results
+      const totalResult = allUsers.length;
 
-    res.json({
-      page: Number(page),
-      limit: Number(limit),
-      totalResult: filteredUsers.length,
-      totalPages: Math.ceil(filteredUsers.length / limit),
-      data: paginatedUsers,
-    });
+      res.json({
+        page: Number(page),
+        limit: Number(limit),
+        totalResult,
+        totalPages: Math.ceil(totalResult / limit),
+        data: filteredUsers,
+      });
+    } catch (err) {
+      console.error("Error getting users:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
   },
 
   // GET - Get user by ID
-  getUserById: (req, res) => {
-    const user = UserModel.getUserById(Number(req.params.id));
+  getUserById: async (req, res) => {
+    const id = Number(req.params.id);
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found!" });
+    try {
+      const user = await UserModel.getUserById(id);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found!" });
+      }
+      res.json(user);
+    } catch (err) {
+      console.error("Error fetching user by ID:", err);
+      res.status(500).json({ error: "Internal Server Error" });
     }
-    res.json(user);
   },
 
   // POST - Create a new user
-  createUser: (req, res) => {
+  createUser: async (req, res) => {
     const { first_name, last_name, gender, email, job_title } = req.body;
 
     if (!first_name || !last_name || !gender || !email || !job_title) {
       return res.status(400).json({ error: "More fields required" });
     }
 
-    const newUser = UserModel.createUser(req.body);
-    res.status(201).json({ status: "success", newUser });
+    try {
+      const newUser = await UserModel.createUser(req.body);
+      res.status(201).json({ status: "success", newUser });
+    } catch (err) {
+      console.error("Error creating user:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
   },
 
   // PUT - Replace a user
-  updateUser: (req, res) => {
+  updateUser: async (req, res) => {
+    const id = Number(req.params.id);
     const updatedUser = req.body;
-    const user = UserModel.updateUser(Number(req.params.id), updatedUser);
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+    try {
+      const user = await UserModel.updateUser(id, updatedUser);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({ status: "success", user });
+    } catch (err) {
+      console.error("Error updating user:", err);
+      res.status(500).json({ error: "Internal Server Error" });
     }
-    res.json({ status: "success", user });
   },
 
   // PATCH - Update part of a user's data
-  patchUser: (req, res) => {
+  patchUser: async (req, res) => {
     const id = Number(req.params.id);
-    const user = UserModel.getUserById(id);
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+    try {
+      const user = await UserModel.getUserById(id);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const updatedUser = { ...user, ...req.body };
+      const updatedUserInDb = await UserModel.updateUser(id, updatedUser);
+      res.json({ status: "success", user: updatedUserInDb });
+    } catch (err) {
+      console.error("Error updating user:", err);
+      res.status(500).json({ error: "Internal Server Error" });
     }
-
-    const updatedUser = { ...user, ...req.body };
-    UserModel.updateUser(id, updatedUser);
-    res.json({ status: "success", user: updatedUser });
   },
 
   // DELETE - Delete a user
-  deleteUser: (req, res) => {
-    const result = UserModel.deleteUser(Number(req.params.id));
+  deleteUser: async (req, res) => {
+    const id = Number(req.params.id);
 
-    if (!result) {
-      return res.status(404).json({ error: "User not found" });
+    try {
+      const result = await UserModel.deleteUser(id);
+
+      if (!result) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({ status: "success" });
+    } catch (err) {
+      console.error("Error deleting user:", err);
+      res.status(500).json({ error: "Internal Server Error" });
     }
-    res.json({ status: "success" });
-  }
+  },
 };
