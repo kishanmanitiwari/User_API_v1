@@ -21,8 +21,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(
   cors({
     origin: "https://restusers.netlify.app",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   })
-);
+); // Allow all methods
 
 function checkApiKey(req, res, next) {
   // const apiKey = req.query.appid; //Query Params
