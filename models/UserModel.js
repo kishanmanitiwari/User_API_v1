@@ -33,6 +33,8 @@ export const UserModel = {
       query += ` LIMIT $${values.push(limit)} OFFSET $${values.push(offset)}`;
 
       const res = await pool.query(query, values);
+      //console.log(typeof res.rows); Returns an object - {}
+      
       return res.rows;
     } catch (err) {
       console.error('Error filtering users:', err);
